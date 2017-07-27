@@ -1,0 +1,15 @@
+## recompile vignette
+setwd("vignettes")
+knit("my-vignette.Rmd")
+setwd("../")
+
+## read md of the vignette
+mdInput <- readLines("vignettes/my-vignette.md")
+
+## remove vignette-specific headers
+toRemove <- 1:10
+mdInput <- mdInput[-toRemove]
+
+## restore right path for figures
+mdInput <- gsub("figs/","vignettes/figs/",mdInput)
+cat(paste(mdInput,collapse="\n"))
