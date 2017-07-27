@@ -2,7 +2,7 @@
 title: "Rank K Factor Analysis with Missing Data"
 author: "Duane Rich"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: rmarkdown::md_document
 vignette: >
   %\VignetteIndexEntry{Rank K Factor Analysis with Missing Data}
   %\VignetteEngine{knitr::rmarkdown}
