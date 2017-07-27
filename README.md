@@ -309,7 +309,11 @@ Finally, we perform out of sample predictions and evaluate performance.
     var_explained <- max(-1, sign(R2) * sqrt(abs(R2)))
     print(var_explained)
 
+<<<<<<< HEAD
     ## [1] 0.04805661
+=======
+    ## [1] 0.1203838
+>>>>>>> 9d35014665bef1f5fe9277fb94ed327b8dbe4cd2
 
 So we see that we can explain ~23% of the variance of unobserved stocks
 from the concurrent stock returns using only 2 latent dimensions. Given
