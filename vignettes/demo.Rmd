@@ -2,7 +2,7 @@
 title: "Rank K Factor Analysis with Missing Data"
 author: "Duane Rich"
 date: "`r Sys.Date()`"
-output: rmarkdown::md_document
+output: html_document
 vignette: >
   %\VignetteIndexEntry{Rank K Factor Analysis with Missing Data}
   %\VignetteEngine{knitr::rmarkdown}
@@ -28,13 +28,15 @@ vignette: >
 
 This package provides one function emfactor() which accepts a numeric matrix with potentially missing data and returns the parameters of a rank K factor model, estimated via the Expectation Maximization algorithm. Its three primary arguments are:
 
-1. x: a numeric matrix with potentially missing variables
+1. x: a numeric matrix with potentially missing values
 2. k: the number of columns in $\mathbf{W}$ (discussed below) or the dimensional of the latent space.
 3. iters: the maximum number of iterations.
 
 It returns:
 
 1. A list containing the estimated parameters of the model ($\mathbf{W}$, $\boldsymbol{\Psi}$, and $\boldsymbol{\mu}$), $\mathbf{Z}$ and an estimation of the covariance matrix. These are discussed in detail below.
+
+This demo explains the derivation (in case you'd like to know what's going on under the hood), shows a demo on artificial data benchmarked against sklearn (without missing data) and finally, shows an application to some Kaggle/equity return data.
 
 ### Fully Observed Data
 
@@ -159,10 +161,22 @@ In effect, the only difference is that we insert a step to determine the expecta
 
 ## Installation
 
-```{r}
-devtools::load_all(".")
+First, you need to install the devtools package. This can be done from CRAN with the following:
+
+```{r eval=FALSE}
+install.packages("devtools")
+```
+After loading the package, install with:
+
+```{r eval=FALSE}
+install_github("Duane321/emfactor")
 ```
 
+Then, you'll be free to load the package using devtools. The below path is specific to my computer, so you'll have to use the path where emfactor was saved on your computer.
+
+```{r}
+devtools::load_all('C:/Users/Duane/Documents/Github/R/emfactor')
+```
 
 <a id="Demotoy"></a>
 
@@ -170,39 +184,38 @@ devtools::load_all(".")
 
 The remaining question is, how do we know it's working properly? We can provide some affirmative evidence with simulated data and a few benchmark algorithms. Specifically, we can simulate data according to different sets of 'true' parameters and measure the algorithms' ability to approximate the true parameters from the data.
 
-Because one of the benchmark algorithms is sklearn's factor analysis model (with no missing data), this section hasn't been set up for reproducibility. Rather, I offer merely the graphics from my inspections.
+Because one of the benchmark algorithms is sklearn's factor analysis model (with no missing data), this section hasn't been set up for reproducibility. Rather, I merely offer the graphics from my testing and hopefully, they will convince you.
 
-We evaluate the performance according to several metrics, some of which include the performance of alternative algorithms. Those metrics are:
+We evaluate the performance according to several metrics:
 
-1. AAD: the average absolute difference (AAD) between the true covariance and the estimate covariance
-2. AAD_w_obs: AAD between the true covariance and the estimate covariance without missing values
+1. AAD: the average absolute difference (AAD) between the true covariance and the estimated covariance using emfactor
+2. AAD_w_obs: AAD between the true covariance and the estimated covariance without missing values
 3. AAD_skl_w_obs: AAD between the true covariance and the sklearn-estimated covariance without missing values
 4. AAD_emp_w_obs: AAD between the true covariance and the empirical covariance without missing values
 5. AAD_emp: AAD between the true covariance and the empirical covariance using only rows with no missing values
-6. AAD_psi: AAD between the true psi and the estimated psi
-7. AAD_mu: AAD between the true mu and the estimated mu
-8. time_taken: amount of time (in seconds) the algorithm took.
+
+Unless we are varying a true parameter value, we use a true latent dimension of 2, 10 observed dimensions, an average latent dimension norm of 1, an average psi value of 0.5, missing percent of 35% and 20,000 data points. 
 
 ### Varying the size of $\boldsymbol{\Psi}$
 
 If we plot the results for different values of the average $\Psi$ value, we observe this graphic:
 
-```{r echo=FALSE, out.width='100%'}
+```{r echo=FALSE}
 knitr::include_graphics('./varying_psi.png')
 ```
 
-So we discover that as we increase the average magnitude of $\Psi$, the error on all approaches tends to increase. This makes sense since this magnitude is an indication of the relative significance between the latent space and the intrinsic noise of each dimension. The important thing to realize is that AAD (the performance of our procedure with missing data) beats the plain empirical approach where we drop rows with missing data and it's only slightly worse than sklearn's approach, which makes sense since we've provided that routine with all missing data filled in.
+So we discover that as we increase the average magnitude of $\Psi$, the error on all approaches tends to increase. This makes sense since this magnitude is an indication of the relative significance between the latent space and the intrinsic noise of each feature dimension. The important thing to realize is that AAD (the performance of our procedure with missing data) beats the plain empirical approach (where we drop rows with missing data) and it nearly tracks sklearn's factor model (which has no missing data!).
 
 
 ### Sizing up N
 
 Now, we explore the behavior as we increase N.
 
-```{r echo=FALSE, out.width='100%'}
+```{r echo=FALSE}
 knitr::include_graphics('./varying_n.png')
 ```
 
-As we can see, this converges.
+As we can see, this converges and emfactor does nearly as well as sklearn with data filled in.
 
 <a id="Demoreal"></a>
 
@@ -214,7 +227,6 @@ First, we read in the data and determine our split for in-sample calibration and
 
 ```{r}
 kag <- as.matrix(read.csv('./kaggle_data.csv'))
-kag <- kag[1:500,1:20]
 split_t <- round(nrow(kag) * 0.5)
 out_idx <- seq(split_t + 1, nrow(kag))
 stocks_observed <- sample(colnames(kag), round(ncol(kag) * 0.5), replace=FALSE)
@@ -224,8 +236,8 @@ stocks_to_predict <- setdiff(colnames(kag), stocks_observed)
 Next, we fit our model to the in-sample data. Here, we will use a latent dimension of 2.
 
 ```{r}
-k <- 2 
-kag_emffit <- emfactor(kag[1:split_t, ], k, 100, shortcut = FALSE)
+k <- 2
+kag_emffit <- emfactor(kag[1:split_t, ], k, 10, verbose = TRUE)
 ```
 
 Finally, we perform out of sample predictions and evaluate performance.
@@ -252,7 +264,7 @@ var_explained <- max(-1, sign(R2) * sqrt(abs(R2)))
 print(var_explained)
 ```
 
-So we see that we can explain ~23% of the variance of unobserved stocks from the concurrent stock returns using only 2 latent dimensions. Given we are dealing with 500 stocks split 50-50 between unobserved and observed, this is a powerful result worth investigating. It is no surprise factor models are so prevalent in financial industry.
+So we see that we can explain ~20% of the variance of unobserved stocks from the concurrent stock returns using only 2 latent dimensions. Given we are dealing with 500 stocks split 50-50 between unobserved and observed, this is a powerful result worth investigating. It is no surprise factor models are so prevalent in the financial industry.
 
 [Back to Top](#top)
 

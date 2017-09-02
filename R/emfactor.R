@@ -1,5 +1,5 @@
 
-emfactor <- function(x, k, iters = 100, verbose = FALSE, shortcut = FALSE){
+emfactor <- function(x, k, iters = 100, verbose = FALSE){
 
   #Need to insert checks for the matrix x.
   #drop rows which are completely missing.
@@ -85,54 +85,48 @@ emfactor <- function(x, k, iters = 100, verbose = FALSE, shortcut = FALSE){
     x_exp <- sweep(t(w %*% t(z)), 2, mu, '+')
     x[na_pos] <- x_exp[na_pos]
     x_demeaned <- sweep(x, 2, mu)
-    if(shortcut){
-      xizi_sum <- t(x) %*% z
-      xixi_sum <- t(x) %*% x
-      zizi_sum <- n*g + t(z) %*% z
-    } else {
-      for (i in seq(n)){
-        zizi <- g + outer(z[i, ], z[i, ])
-        xixi <- outer(x[i, ], x[i, ])
-        xizi <- outer(x[i, ], z[i, ])
+    for (i in seq(n)){
+      zizi <- g + outer(z[i, ], z[i, ])
+      xixi <- outer(x[i, ], x[i, ])
+      xizi <- outer(x[i, ], z[i, ])
 
-        zizi_eig <- eigen(zizi)
-        zizi_sqrt <- zizi_eig$vectors %*% diag2(sqrt(zizi_eig$values))
+      zizi_eig <- eigen(zizi)
+      zizi_sqrt <- zizi_eig$vectors %*% diag2(sqrt(zizi_eig$values))
 
-        if(!none_missing){
-          miss_n <- missing_names[[i]]
-        } else{
-          miss_n <- NULL
-        }
-        if(length(miss_n) > 0){
-          obs_n <- setdiff(colnames(x), miss_n)
-          if(length(miss_n) ==1 ){
-            uncond_var <- w[miss_n, ] %*% zizi %*% w[miss_n, ] + psi[miss_n]
-            vh_cov <- w[obs_n, ] %*% zizi %*% w[miss_n, ]
-            vv_cov_inv <- invert_by_mil(psi[obs_n], w[obs_n,] %*% zizi_sqrt, t(zizi_sqrt) %*% t(w[obs_n, ]))
+      if(!none_missing){
+        miss_n <- missing_names[[i]]
+      } else{
+        miss_n <- NULL
+      }
+      if(length(miss_n) > 0){
+        obs_n <- setdiff(colnames(x), miss_n)
+        if(length(miss_n) ==1 ){
+          uncond_var <- w[miss_n, ] %*% zizi %*% w[miss_n, ] + psi[miss_n]
+          vh_cov <- w[obs_n, ] %*% zizi %*% w[miss_n, ]
+          vv_cov_inv <- invert_by_mil(psi[obs_n], w[obs_n,] %*% zizi_sqrt, t(zizi_sqrt) %*% t(w[obs_n, ]))
+          cond_var <- uncond_var - t(vh_cov) %*% vv_cov_inv %*% vh_cov
+        } else {
+          uncond_var <- w[miss_n, ] %*% zizi %*% t(w[miss_n, ]) + diag2(psi[miss_n])
+          if(length(obs_n) > 0){
+            vh_cov <- w[obs_n, ] %*% zizi %*% t(w[miss_n, ])
+            if(length(obs_n) == 1){
+              vv_cov <- w[obs_n, ] %*% zizi %*% w[obs_n, ] + psi[obs_n]
+              vv_cov_inv <- 1/vv_cov
+            } else {
+              vv_cov_inv <- invert_by_mil(psi[obs_n], w[obs_n,] %*% zizi_sqrt, t(zizi_sqrt) %*% t(w[obs_n, ]))
+            }
             cond_var <- uncond_var - t(vh_cov) %*% vv_cov_inv %*% vh_cov
           } else {
-            uncond_var <- w[miss_n, ] %*% zizi %*% t(w[miss_n, ]) + diag2(psi[miss_n])
-            if(length(obs_n) > 0){
-              vh_cov <- w[obs_n, ] %*% zizi %*% t(w[miss_n, ])
-              if(length(obs_n) == 1){
-                vv_cov <- w[obs_n, ] %*% zizi %*% w[obs_n, ] + psi[obs_n]
-                vv_cov_inv <- 1/vv_cov
-              } else {
-                vv_cov_inv <- invert_by_mil(psi[obs_n], w[obs_n,] %*% zizi_sqrt, t(zizi_sqrt) %*% t(w[obs_n, ]))
-              }
-              cond_var <- uncond_var - t(vh_cov) %*% vv_cov_inv %*% vh_cov
-            } else {
-              cond_var <- uncond_var
-            }
+            cond_var <- uncond_var
           }
-          xihxih <-  cond_var + outer(x[i, miss_n], x[i, miss_n])
-          xixi[miss_n,miss_n] <- xihxih
-          xizi[miss_n,] <- w[miss_n, ] %*% zizi + outer(mu[miss_n], z[i, ])
         }
-        xizi_sum <- xizi_sum + xizi
-        xixi_sum <- xixi_sum + xixi
-        zizi_sum <- zizi_sum + zizi
+        xihxih <-  cond_var + outer(x[i, miss_n], x[i, miss_n])
+        xixi[miss_n,miss_n] <- xihxih
+        xizi[miss_n,] <- w[miss_n, ] %*% zizi + outer(mu[miss_n], z[i, ])
       }
+      xizi_sum <- xizi_sum + xizi
+      xixi_sum <- xixi_sum + xixi
+      zizi_sum <- zizi_sum + zizi
     }
 
     aux_func()
